@@ -63,16 +63,6 @@ public class Day4 extends BaseProblem {
             .mapToLong(List::size)
             .sum();
 
-//        cards.stream()
-//            .collect(Collectors.groupingBy(
-//                Card::number,
-//                Collectors.counting()
-//            ))
-//            .entrySet()
-//            .stream()
-//            .sorted(Map.Entry.comparingByKey())
-//            .forEach(e -> System.out.println("Card: " + e.getKey() + " count: " + e.getValue()));
-
 
         return new Output(String.valueOf(part1Sum), String.valueOf(part2Sum));
     }

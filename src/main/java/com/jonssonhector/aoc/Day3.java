@@ -191,14 +191,14 @@ public class Day3 extends BaseProblem {
                 throw new IllegalArgumentException("Not a number");
             }
 
-            var ll = new ArrayList<Character>();
-            ll.add(n.get());
+            var digitChars = new ArrayList<Character>();
+            digitChars.add(n.get());
             // Walk backwards until we don't find a digit
             var checkX1 = x - 1;
             while (checkX1 >= 0) {
                 var c = matrix[y][checkX1];
                 if (Character.isDigit(c)) {
-                    ll.add(0, c);
+                    digitChars.add(0, c);
                     checkX1--;
                 } else {
                     break;
@@ -209,14 +209,14 @@ public class Day3 extends BaseProblem {
             while (checkX2 < matrix[y].length) {
                 var c = matrix[y][checkX2];
                 if (Character.isDigit(c)) {
-                    ll.add(c);
+                    digitChars.add(c);
                     checkX2++;
                 } else {
                     break;
                 }
             }
 
-            var ss = ll.stream()
+            var ss = digitChars.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining());
 
