@@ -226,9 +226,6 @@ public class Day3 extends BaseProblem {
     }
 
     private record PointNumber(int number, int startY, int startX) {
-        public Point getStartPoint() {
-            return new Point(startY, startX);
-        }
     }
 
     private record TwoNumbers(int one, int two) {
