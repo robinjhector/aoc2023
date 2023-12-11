@@ -39,6 +39,7 @@ public class Runner {
             case 4 -> new Day4().run(input);
             case 5 -> new Day5().run(input);
             case 6 -> new Day6().run(input);
+            case 7 -> new Day7().run(input);
 
             default -> throw new IllegalArgumentException("Not implemented yet");
         };
