@@ -1,9 +1,8 @@
 package com.jonssonhector.aoc;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public class Day10 extends BaseProblem {
@@ -13,102 +12,87 @@ public class Day10 extends BaseProblem {
 
         var maze = Maze.parse(input);
         System.out.println("Start: " + maze.start);
-        var atEndPos = false;
-        var currentPos = maze.start;
-        var lastDirection = (Direction) null;
-        var part1Steps = new ArrayList<Coord>();
-        while (!atEndPos) {
-            var step = maze.step(currentPos, lastDirection);
-            part1Steps.add(step.newPos);
-            currentPos = step.newPos;
-            lastDirection = step.direction;
 
-            if (maze.start.equals(step.newPos)) {
-                atEndPos = true;
-            }
-        }
+        var part1Pipes = walkPipe(maze);
+        maze.cleanup(part1Pipes);
 
         System.out.println("Visualized ('S' = start, '·' = non-pipe):");
-        visualize(maze, part1Steps);
-        System.out.println("Part 1 total steps: " + part1Steps.size());
+        visualize(maze);
+        System.out.println("Loop steps: " + part1Pipes.size());
 
-        var cleanMaze = cleanup(maze, part1Steps);
-        var adjustedMaze = expandMaze(cleanMaze);
-        System.out.println("Start 2: " + adjustedMaze.start);
-        currentPos = adjustedMaze.start;
-        atEndPos = false;
-        lastDirection = null;
-        var part2Steps = new ArrayList<Coord>();
-        while (!atEndPos) {
-            var step = adjustedMaze.step(currentPos, lastDirection);
-            part2Steps.add(step.newPos);
-            currentPos = step.newPos;
-            lastDirection = step.direction;
+        // PART 2
+        var largeMaze = expandMaze(maze);
+        var part2Pipes = walkPipe(largeMaze);
+        largeMaze.cleanup(part2Pipes);
+        fill(largeMaze, new Coord(0, 0), part2Pipes);
+        //System.out.println("Visualized ('S' = start, '·' = non-pipe, '#' = outside):");
+        //visualize(largeMaze);
 
-            if (adjustedMaze.start.equals(step.newPos)) {
-                atEndPos = true;
+        var enclosedSpaces = 0;
+        // "scale down" 1/3
+        for (int y = 1; y < largeMaze.matrix.length; y += 3) {
+            for (int x = 1; x < largeMaze.matrix[0].length; x += 3) {
+                var coord = new Coord(x, y);
+                System.out.print(coord.get(largeMaze));
+                if (!part2Pipes.contains(coord) && coord.isBlankAround(largeMaze)) {
+                    enclosedSpaces++;
+                }
             }
+            System.out.println();
         }
 
-        System.out.println("Visualized ('S' = start, '·' = non-pipe):");
-        visualize(adjustedMaze, part2Steps);
-
-
-        return new Output(String.valueOf(part1Steps.size() / 2), String.valueOf(0));
+        return new Output(String.valueOf(part1Pipes.size() / 2), String.valueOf(enclosedSpaces));
     }
 
-    private void visualize(Maze maze, List<Coord> actualPipes) {
+    private static List<Coord> walkPipe(Maze maze) {
+        var result = new ArrayList<Coord>();
+        var lastDirection = (Direction) null;
+        var currentPos = maze.start;
+        do {
+            var step = maze.step(currentPos, lastDirection);
+            currentPos = step.newPos;
+            result.add(currentPos);
+            lastDirection = step.direction;
+        } while (!maze.start.equals(currentPos));
+
+        return result;
+    }
+
+    private void fill(Maze maze, Coord start, List<Coord> pipeCoords) {
+        var queue = new LinkedList<Coord>();
+        queue.add(start);
+
+        while (!queue.isEmpty()) {
+            var current = queue.remove();
+
+            // If current is not within bounds, already filled, or part of the loop, skip to next
+            if (!current.inBounds(maze.matrix) || current.get(maze) == '#' || pipeCoords.contains(current)) {
+                continue;
+            }
+
+            // Fill the current position
+            maze.matrix[current.y][current.x] = '#';
+
+            // Add the four adjacent positions to the queue
+            queue.add(current.move(Direction.NORTH));
+            queue.add(current.move(Direction.WEST));
+            queue.add(current.move(Direction.SOUTH));
+            queue.add(current.move(Direction.EAST));
+        }
+    }
+
+    private void visualize(Maze maze) {
         for (int y = 0; y < maze.matrix.length; y++) {
             for (int x = 0; x < maze.matrix[0].length; x++) {
                 var ncord = new Coord(x, y);
-                var pipe = actualPipes.contains(ncord);
                 var isStart = maze.start.equals(ncord);
                 var cc = ncord.get(maze);
-                var c = isStart ? 'S' : pipe ? cc : '.';
+                //var c = isStart ? 'S' : pipe ? cc : cc == '#' ? '#' : '.';
+                var c = isStart ? 'S' : cc;
                 System.out.print(c);
             }
             System.out.println();
         }
-    }
-
-    private Maze cleanup(Maze maze, ArrayList<Coord> actualPipes) {
-        var newMtrx = new char[maze.matrix.length][maze.matrix[0].length];
-        for (int y = 0; y < maze.matrix.length; y++) {
-            for (int x = 0; x < maze.matrix[0].length; x++) {
-                var ncord = new Coord(x, y);
-                var actualPipe = actualPipes.contains(ncord);
-                var isStart = maze.start.equals(ncord);
-                var cc = ncord.get(maze);
-                var c = isStart ? 'S' : actualPipe ? cc : ' ';
-                newMtrx[y][x] = c;
-            }
-        }
-        return new Maze(maze.start, newMtrx);
-    }
-
-    private int countEnclosedBlanks(Maze maze) {
-        var exploredBlanks = new ArrayList<Coord>();
-        var enclosedBlanks = new ArrayList<Coord>();
-        for (int y = 0; y < maze.matrix.length; y++) {
-            for (int x = 0; x < maze.matrix[0].length; x++) {
-                var cord = new Coord(x, y);
-                var c = cord.get(maze);
-                if (c == ' ' && !exploredBlanks.contains(cord)) {
-                    // We've found a blank! Expand it
-                    var exp = expand(maze, cord);
-                    exploredBlanks.addAll(exp.coords);
-                    if (!exp.oob) {
-                        enclosedBlanks.addAll(exp.coords);
-                    }
-                }
-            }
-        }
-
-        return enclosedBlanks.size();
-    }
-
-    private ExpandedMaze expand(Maze maze, Coord from) {
-        return new ExpandedMaze(List.of(), true);
     }
 
     private Maze expandMaze(Maze maze) {
@@ -313,8 +297,18 @@ public class Day10 extends BaseProblem {
             if (!newPos.inBounds(matrix)) {
                 throw new IllegalStateException("New pos is out of bounds: " + newPos);
             }
-            //System.out.printf("Moving from %s, direction %s towards %s%n", from, direction, newPos);
             return new Step(newPos, direction);
+        }
+
+        public void cleanup(List<Coord> actualPipes) {
+            for (int y = 0; y < matrix.length; y++) {
+                for (int x = 0; x < matrix[0].length; x++) {
+                    var c = new Coord(x, y);
+                    if (!actualPipes.contains(c)) {
+                        matrix[y][x] = '.';
+                    }
+                }
+            }
         }
     }
 
@@ -335,6 +329,18 @@ public class Day10 extends BaseProblem {
                 case WEST -> new Coord(x - 1, y);
             };
         }
+
+        public boolean isBlankAround(Maze maze) {
+            for (int y = this.y - 1; y < this.y + 2; y++) {
+                for (int x = this.x - 1; x < this.x + 2; x++) {
+                    var nc = new Coord(x, y);
+                    if (!nc.inBounds(maze.matrix) || nc.get(maze) != '.') {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
     }
 
     private record Step(Coord newPos, Direction direction) {
@@ -345,8 +351,5 @@ public class Day10 extends BaseProblem {
         EAST,
         SOUTH,
         WEST
-    }
-
-    private record ExpandedMaze(List<Coord> coords, boolean oob) {
     }
 }
